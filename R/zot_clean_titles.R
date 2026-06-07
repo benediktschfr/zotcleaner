@@ -1,6 +1,6 @@
 #' Smart Case Converter (Gruber/Pagaltzis Logic)
 #'
-#' An internal helper function that implements the John Gruber and
+#' An internal helper function that implements the legendary John Gruber and
 #' Aristotle Pagaltzis Title Case logic natively in R. It intelligently handles
 #' small words, preserves internal capitalization (e.g., "MacBook", "CRISPR"),
 #' ignores URLs/HTML tags, and handles punctuation rules.
@@ -36,6 +36,9 @@ zot_apply_smart_casing <- function(text, method = c("sentence", "title")) {
     "vs",
     "vs."
   )
+
+  # Escape dots for safe regex matching (e.g., "v." -> "v\.")
+  escaped_small_words <- gsub("\\.", "\\\\.", small_words)
 
   # A robust tokenizer regex that safely isolates protected strings
   token_pattern <- paste(
@@ -130,14 +133,41 @@ zot_apply_smart_casing <- function(text, method = c("sentence", "title")) {
 
       res <- paste(tokens, collapse = "")
 
-      # Gruber's specific Title Case hyphenation rule (e.g., "Stand-In")
+      # Gruber's specific Title Case hyphenation rules (e.g., "Stand-In" and "In-Flight")
       if (method == "title") {
-        small_re <- paste0(
-          "(?i)(?<=[[:alpha:]]-)(",
-          paste(small_words, collapse = "|"),
-          ")(\\b)(?!-)"
+        # Rule A: e.g., "Stand-in" -> "Stand-In" (small word after hyphen, not followed by another hyphen)
+        small_re_after <- paste0(
+          "(?i)(?<=[[:alpha:]]-)\\b(",
+          paste(escaped_small_words, collapse = "|"),
+          ")\\b(?!-)"
         )
-        res <- gsub(small_re, "\\u\\1", res, perl = TRUE)
+        m_after <- gregexpr(small_re_after, res, perl = TRUE)
+        regmatches(res, m_after) <- lapply(
+          regmatches(res, m_after),
+          function(x) {
+            if (length(x) == 0) {
+              return(x)
+            }
+            paste0(toupper(substr(x, 1, 1)), tolower(substr(x, 2, nchar(x))))
+          }
+        )
+
+        # Rule B: e.g., "in-flight" -> "In-Flight" (small word before hyphen, not preceded by another hyphen)
+        small_re_before <- paste0(
+          "(?i)(?<!-)\\b(",
+          paste(escaped_small_words, collapse = "|"),
+          ")\\b(?=-[[:alpha:]])"
+        )
+        m_before <- gregexpr(small_re_before, res, perl = TRUE)
+        regmatches(res, m_before) <- lapply(
+          regmatches(res, m_before),
+          function(x) {
+            if (length(x) == 0) {
+              return(x)
+            }
+            paste0(toupper(substr(x, 1, 1)), tolower(substr(x, 2, nchar(x))))
+          }
+        )
       }
 
       return(res)
