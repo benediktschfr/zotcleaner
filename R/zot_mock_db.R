@@ -335,6 +335,31 @@ zot_mock_db <- function() {
   con
 }
 
+#' Disconnect from the Zotero Database
+#'
+#' Safely closes the connection to the SQLite database (mock or real) and
+#' provides a status message.
+#'
+#' @param con An active DBI connection.
+#' @return Invisible TRUE if successful.
+#' @export
+zot_disconnect_db <- function(con) {
+  if (!is.null(con) && DBI::dbIsValid(con)) {
+    DBI::dbDisconnect(con)
+    cli::cli_alert_success("Database connection successfully closed.")
+  } else {
+    cli::cli_alert_info("Database connection was already closed or invalid.")
+  }
+  return(invisible(TRUE))
+}
+
+#' Retrieve a Flat View of All Items, Titles, and Authors
+#'
+#' Helper function to demonstrate the "before and after" effects of database cleaning.
+#'
+#' @param con An active DBI connection to a Zotero database.
+#' @return A data frame containing item IDs, clean titles, and concatenated author names.
+#' @export
 zot_get_flat_view <- function(con) {
   items_db <- dplyr::tbl(con, "items")
   creators_db <- dplyr::tbl(con, "creators")
