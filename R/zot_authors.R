@@ -1,13 +1,40 @@
-#' Find Authors in the Zotero Database
+#' Handle Duplicate Authors in Zotero
 #'
-#' Searches the 'creators' table for a specific pattern in either the first
-#' or last name. This is the first step before merging duplicate authors.
+#' These functions allow you to systematically find and merge duplicate or
+#' inconsistently formatted author entries in the Zotero database.
 #'
 #' @param con An active DBI connection to a Zotero database.
 #' @param pattern A character string containing a regular expression to search for.
 #' @param ignore_case Logical. Should the search be case-insensitive? Default is TRUE.
+#' @param merge_ids A numeric vector of creatorIDs that should be merged.
+#' @param target_id (Optional) The specific creatorID that should be kept. If NULL
+#'   and the session is interactive, an interactive selection menu is presented.
 #'
-#' @return A tibble containing the matching creators.
+#' @return
+#'   * `zot_find_authors`: A tibble containing the matching creators.
+#'   * `zot_merge_authors`: Invisible TRUE if successful, FALSE if cancelled or failed.
+#'
+#' @examples
+#' # 1. Create a clean in-memory test environment
+#' mock_db <- zot_mock_db()
+#'
+#' # 2. Find all variations of a specific author (e.g., "Harrison")
+#' harrison_variations <- zot_find_authors(mock_db, "Harrison")
+#' harrison_variations
+#'
+#' # 3. Merge duplicates programmatically by specifying the target master ID
+#' # (In an interactive session, you can leave target_id = NULL for a menu)
+#' zot_merge_authors(
+#'   con = mock_db,
+#'   merge_ids = harrison_variations$creatorID,
+#'   target_id = 3
+#' )
+#'
+#' # 4. Disconnect safely
+#' zot_disconnect_db(mock_db)
+#'
+#' @rdname zot_authors
+#' @order 1
 #' @export
 zot_find_authors <- function(con, pattern, ignore_case = TRUE) {
   creators_db <- dplyr::tbl(con, "creators") |> dplyr::collect()
@@ -28,21 +55,8 @@ zot_find_authors <- function(con, pattern, ignore_case = TRUE) {
   return(matches)
 }
 
-#' Merge Duplicate Authors in Zotero
-#'
-#' Merges multiple creator IDs into a single target ID. It updates all
-#' publication links in the 'itemCreators' table to point to the target ID
-#' and removes the now orphaned duplicate IDs from the 'creators' table.
-#'
-#' If run interactively without a `target_id`, it will prompt the user to
-#' select the correct author name from a menu and ask for confirmation.
-#'
-#' @param con An active DBI connection to a Zotero database.
-#' @param merge_ids A numeric vector of creatorIDs that should be merged.
-#' @param target_id (Optional) The specific creatorID that should be kept. If NULL
-#' and the session is interactive, a selection menu is presented.
-#'
-#' @return Invisible TRUE if successful, FALSE if cancelled or failed.
+#' @rdname zot_authors
+#' @order 2
 #' @export
 zot_merge_authors <- function(con, merge_ids, target_id = NULL) {
   # 1. Fetch details of the selected IDs
