@@ -37,7 +37,7 @@ mock_db <- zot_mock_db()
 
 # 2. Find all variations of a specific publisher (e.g., "Springer")
 spring_publishers <- zot_find_publishers(mock_db, "Springer")
-print(spring_publishers)
+spring_publishers
 
 # 3. Merge duplicates programmatically by specifying the target master ID
 # (In an interactive session, you can leave target_id = NULL for a menu)

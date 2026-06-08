@@ -1,7 +1,3 @@
-# ==============================================================================
-# zotcleaner: Institution Detection and Fixing Operations
-# ==============================================================================
-
 #' Handle Misclassified Institutional Authors in Zotero
 #'
 #' These functions allow you to systematically scan your Zotero database for
