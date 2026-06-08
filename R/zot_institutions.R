@@ -1,15 +1,44 @@
-#' Find Misclassified Institutional Authors
+# ==============================================================================
+# zotcleaner: Institution Detection and Fixing Operations
+# ==============================================================================
+
+#' Handle Misclassified Institutional Authors in Zotero
 #'
-#' Scans the 'creators' table for entries currently classified as persons
-#' (fieldMode = 0) but containing keywords strongly suggesting they are
-#' actually institutions or corporate authors (e.g., "Organization",
-#' "Society", "University").
+#' These functions allow you to systematically scan your Zotero database for
+#' institutional or corporate authors (like "World Health Organization" or
+#' "European Molecular Biology Laboratory") that were mistakenly imported and
+#' split into first/last name fields, and convert them to proper single-field
+#' institutional creators (fieldMode = 1).
 #'
 #' @param con An active DBI connection to a Zotero database.
 #' @param custom_keywords Optional character vector of additional regex keywords
 #'   to search for (case-insensitive).
+#' @param creator_ids A numeric vector of creatorIDs to convert.
 #'
-#' @return A tibble containing the suspicious creators.
+#' @return
+#'   * `zot_find_institutions`: A tibble containing the suspicious creators.
+#'   * `zot_fix_institutions`: Invisible TRUE if successful, FALSE if cancelled.
+#'
+#' @examples
+#' # 1. Create a clean in-memory test database
+#' mock_db <- zot_mock_db()
+#'
+#' # 2. Find authors that look like institutions (e.g., matching "Organization", "Laboratory")
+#' suspicious <- zot_find_institutions(mock_db)
+#' print(suspicious)
+#'
+#' # 3. Convert them to proper single-field institutional authors
+#' # (In an interactive session, leaving out prompt confirmations is automatic)
+#' zot_fix_institutions(
+#'   con = mock_db,
+#'   creator_ids = suspicious$creatorID
+#' )
+#'
+#' # 4. Disconnect safely
+#' zot_disconnect_db(mock_db)
+#'
+#' @rdname zot_institutions
+#' @order 1
 #' @export
 zot_find_institutions <- function(con, custom_keywords = NULL) {
   cli::cli_h2("Scanning for misclassified institutions")
@@ -71,17 +100,8 @@ zot_find_institutions <- function(con, custom_keywords = NULL) {
   return(matches)
 }
 
-#' Fix Misclassified Institutional Authors
-#'
-#' Converts selected creators from 'person' mode (fieldMode = 0) to
-#' 'institution' mode (fieldMode = 1). It automatically concatenates the
-#' firstName and lastName fields and stores the full name in the lastName
-#' field, which is Zotero's standard for single-field corporate authors.
-#'
-#' @param con An active DBI connection to a Zotero database.
-#' @param creator_ids A numeric vector of creatorIDs to convert.
-#'
-#' @return Invisible TRUE if successful, FALSE if cancelled.
+#' @rdname zot_institutions
+#' @order 2
 #' @export
 zot_fix_institutions <- function(con, creator_ids) {
   if (length(creator_ids) == 0) {
