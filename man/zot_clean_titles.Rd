@@ -14,9 +14,9 @@ zot_clean_titles(
 \arguments{
 \item{con}{An active DBI connection to a Zotero database.}
 
-\item{fix_html}{Logical. Should HTML tags and entities be stripped/decoded?}
+\item{fix_html}{Logical. Should HTML tags and entities be stripped/decoded? Default is TRUE.}
 
-\item{fix_uppercase}{Logical. Should ALL-CAPS titles be converted?}
+\item{fix_uppercase}{Logical. Should ALL-CAPS titles be converted? Default is TRUE.}
 
 \item{to_case}{Character. If \code{fix_uppercase} is TRUE, what case should be applied?
 Options are "sentence" (default, recommended by Zotero) or "title".}
@@ -26,6 +26,23 @@ Invisible TRUE if successful, FALSE otherwise.
 }
 \description{
 Scans the Zotero database for titles containing HTML tags, HTML entities
-(like &), or titles written entirely in UPPERCASE. It provides an
+(like \verb{&amp;}), or titles written entirely in UPPERCASE. It provides an
 interactive review before cleaning the database in-place.
+}
+\examples{
+# 1. Create a clean in-memory test database
+mock_db <- zot_mock_db()
+
+# 2. Scan and clean publication titles
+# (In an interactive session, this presents a preview of changes)
+zot_clean_titles(
+  con = mock_db,
+  fix_html = TRUE,
+  fix_uppercase = TRUE,
+  to_case = "sentence"
+)
+
+# 3. Disconnect safely
+zot_disconnect_db(mock_db)
+
 }

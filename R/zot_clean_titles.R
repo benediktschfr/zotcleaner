@@ -45,7 +45,7 @@ zot_apply_smart_casing <- function(text, method = c("sentence", "title")) {
     "<[^>]+>", # 1. HTML tags
     "[a-zA-Z0-9_.-]+://[^\\s]+", # 2. URLs
     "[a-zA-Z0-9.-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+", # 3. Emails
-    "[[:alpha:]]+(?:['\u2019][[:alpha:]]+)*", # 4. Words (including apostrophes)
+    "[[:alpha:]]+(?:['\\u2019][[:alpha:]]+)*", # 4. Words (including apostrophes)
     "[^[:alpha:]<]+", # 5. Non-words (spaces, punctuation)
     "<", # 6. Literal '<' catch-all
     sep = "|"
@@ -180,16 +180,33 @@ zot_apply_smart_casing <- function(text, method = c("sentence", "title")) {
 #' Clean Publication Titles in Zotero
 #'
 #' Scans the Zotero database for titles containing HTML tags, HTML entities
-#' (like &amp;), or titles written entirely in UPPERCASE. It provides an
+#' (like `&amp;`), or titles written entirely in UPPERCASE. It provides an
 #' interactive review before cleaning the database in-place.
 #'
 #' @param con An active DBI connection to a Zotero database.
-#' @param fix_html Logical. Should HTML tags and entities be stripped/decoded?
-#' @param fix_uppercase Logical. Should ALL-CAPS titles be converted?
+#' @param fix_html Logical. Should HTML tags and entities be stripped/decoded? Default is TRUE.
+#' @param fix_uppercase Logical. Should ALL-CAPS titles be converted? Default is TRUE.
 #' @param to_case Character. If `fix_uppercase` is TRUE, what case should be applied?
 #'   Options are "sentence" (default, recommended by Zotero) or "title".
 #'
 #' @return Invisible TRUE if successful, FALSE otherwise.
+#'
+#' @examples
+#' # 1. Create a clean in-memory test database
+#' mock_db <- zot_mock_db()
+#'
+#' # 2. Scan and clean publication titles
+#' # (In an interactive session, this presents a preview of changes)
+#' zot_clean_titles(
+#'   con = mock_db,
+#'   fix_html = TRUE,
+#'   fix_uppercase = TRUE,
+#'   to_case = "sentence"
+#' )
+#'
+#' # 3. Disconnect safely
+#' zot_disconnect_db(mock_db)
+#'
 #' @export
 zot_clean_titles <- function(
   con,
