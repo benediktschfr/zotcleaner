@@ -1,13 +1,40 @@
-#' Find Publishers in the Zotero Database
+#' Handle Duplicate Publishers in Zotero
 #'
-#' Searches the 'itemDataValues' table for specific publisher names.
-#' This is the first step before merging duplicate or inconsistently named publishers.
+#' These functions allow you to systematically find and merge duplicate or
+#' inconsistently formatted publisher names in the Zotero database.
 #'
 #' @param con An active DBI connection to a Zotero database.
 #' @param pattern A character string containing a regular expression to search for.
 #' @param ignore_case Logical. Should the search be case-insensitive? Default is TRUE.
+#' @param merge_ids A numeric vector of valueIDs that should be merged.
+#' @param target_id (Optional) The specific valueID that should be kept. If NULL
+#'   and the session is interactive, an interactive selection menu is presented.
 #'
-#' @return A tibble containing the matching publisher strings and their valueIDs.
+#' @return
+#'   * `zot_find_publishers`: A tibble containing the matching publisher strings and their valueIDs.
+#'   * `zot_merge_publishers`: Invisible TRUE if successful, FALSE if cancelled or failed.
+#'
+#' @examples
+#' # 1. Create a clean in-memory test database
+#' mock_db <- zot_mock_db()
+#'
+#' # 2. Find all variations of a specific publisher (e.g., "Springer")
+#' spring_publishers <- zot_find_publishers(mock_db, "Springer")
+#' print(spring_publishers)
+#'
+#' # 3. Merge duplicates programmatically by specifying the target master ID
+#' # (In an interactive session, you can leave target_id = NULL for a menu)
+#' zot_merge_publishers(
+#'   con = mock_db,
+#'   merge_ids = spring_publishers$valueID,
+#'   target_id = 33 # Keeps "Springer" as master and cleans up "Springer-Verlag"
+#' )
+#'
+#' # 4. Disconnect safely
+#' zot_disconnect_db(mock_db)
+#'
+#' @rdname zot_publishers
+#' @order 1
 #' @export
 zot_find_publishers <- function(con, pattern, ignore_case = TRUE) {
   fields_db <- dplyr::tbl(con, "fields")
@@ -45,18 +72,8 @@ zot_find_publishers <- function(con, pattern, ignore_case = TRUE) {
   return(matches)
 }
 
-#' Merge Duplicate Publishers in Zotero
-#'
-#' Merges multiple publisher string IDs into a single target ID. It updates all
-#' publication links in the 'itemData' table to point to the target ID
-#' and cleans up the orphaned string fragments.
-#'
-#' @param con An active DBI connection to a Zotero database.
-#' @param merge_ids A numeric vector of valueIDs that should be merged.
-#' @param target_id (Optional) The specific valueID that should be kept. If NULL
-#' and the session is interactive, a selection menu is presented.
-#'
-#' @return Invisible TRUE if successful, FALSE if cancelled or failed.
+#' @rdname zot_publishers
+#' @order 2
 #' @export
 zot_merge_publishers <- function(con, merge_ids, target_id = NULL) {
   fields_db <- dplyr::tbl(con, "fields")
@@ -96,7 +113,7 @@ zot_merge_publishers <- function(con, merge_ids, target_id = NULL) {
       publishers_db$valueID
     )
 
-    # Add the manual entry option at the end
+    # Add option for manual entry at the end
     choices <- c(choices, "None of the above (Enter manually)")
 
     selection <- utils::menu(
@@ -112,7 +129,7 @@ zot_merge_publishers <- function(con, merge_ids, target_id = NULL) {
     # Handle manual entry
     if (selection == length(choices)) {
       manual_entry <- TRUE
-      target_id <- publishers_db$valueID[1] # Arbitrarily pick the first ID to become the new master
+      target_id <- publishers_db$valueID[1] # Set first ID as temporary master ID
 
       cli::cli_h2("Manual Publisher Entry")
       new_publisher_name <- trimws(readline("Enter correct Publisher Name: "))

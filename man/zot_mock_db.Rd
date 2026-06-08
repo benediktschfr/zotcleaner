@@ -10,7 +10,6 @@ zot_mock_db()
 A DBI connection to a temporary, populated SQLite database in RAM.
 }
 \description{
-This function simulates Zotero's exact relational database schema in-memory.
-It utilizes pre-defined package datasets (e.g., zot_creators_raw) to populate
-the SQLite tables.
+This function simulates Zotero's exact relational database schema in-memory
+by directly loading the pre-defined package datasets (e.g., \code{zot_creators_raw}).
 }

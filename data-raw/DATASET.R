@@ -1,3 +1,7 @@
+library(tibble)
+library(usethis)
+
+# 1. Creators (Authors)
 zot_creators_raw <- tibble::tibble(
   creatorID = 1:20,
   lastName = c(
@@ -14,7 +18,7 @@ zot_creators_raw <- tibble::tibble(
     "Ying",
     "ALEXANDER",
     "nakamura",
-    "von weizsecker",
+    "von weizsäcker",
     "Einstein",
     "Curie",
     "Watson",
@@ -47,15 +51,19 @@ zot_creators_raw <- tibble::tibble(
   fieldMode = c(rep(0, 6), 0, 0, 0, rep(0, 11))
 )
 
-use_data(zot_creators_raw, overwrite = TRUE)
+usethis::use_data(zot_creators_raw, overwrite = TRUE)
 
+
+# 2. Items (Publications)
 zot_items_raw <- tibble::tibble(
   itemID = 101:115,
   itemTypeID = c(1, 2, 1, 1, 1, 1, 3, 1, 1, 1, 2, 1, 1, 3, 1)
 )
 
-use_data(zot_items_raw, overwrite = TRUE)
+usethis::use_data(zot_items_raw, overwrite = TRUE)
 
+
+# 3. Item Creators (Join Table)
 zot_item_creators_raw <- tibble::tibble(
   itemID = c(
     101,
@@ -107,18 +115,25 @@ zot_item_creators_raw <- tibble::tibble(
   orderIndex = c(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0)
 )
 
-use_data(zot_item_creators_raw, overwrite = TRUE)
+usethis::use_data(zot_item_creators_raw, overwrite = TRUE)
 
+
+# 4. Fields (EAV Metadata Schema)
+# Added fieldID = 4 for 'publisher'
 zot_fields_raw <- tibble::tibble(
-  fieldID = 1:3,
-  fieldName = c("title", "publicationTitle", "date")
+  fieldID = 1:4,
+  fieldName = c("title", "publicationTitle", "date", "publisher")
 )
 
-use_data(zot_fields_raw, overwrite = TRUE)
+usethis::use_data(zot_fields_raw, overwrite = TRUE)
 
+
+# 5. Item Data Values (Unique metadata strings)
+# Added values 33-36 for messy and clean publishers
 zot_item_data_values_raw <- tibble::tibble(
-  valueID = 1:32,
+  valueID = 1:36,
   value = c(
+    # 1-15: Titles
     "OBSERVATION OF GRAVITATIONAL WAVES FROM A BINARY BLACK HOLE MERGER",
     "A Practical Guide to Relativistic Cosmology and Spacetime Geometry",
     "Multimessenger Observations of a Binary Neutron Star Coalescence",
@@ -134,6 +149,8 @@ zot_item_data_values_raw <- tibble::tibble(
     "Sketch of the Analytical Engine Invented by Charles Babbage",
     "Computing Machinery and Intelligence",
     "A Method for Obtaining Digital Signatures and Public-Key Cryptosystems",
+
+    # 16-27: Journals
     "Physical Review Letters",
     "Phys Rev Lett",
     "Phys. Rev. Lett.",
@@ -146,19 +163,35 @@ zot_item_data_values_raw <- tibble::tibble(
     "J. Am. Chem. Soc.",
     "The Lancet",
     "Journal of Virology",
+
+    # 28-32: Dates
     "2016",
     "1953",
     "2020",
     "1905",
-    "1950"
+    "1950",
+
+    # 33-36: Publishers (NEW!)
+    "Springer", # ID: 33 (Master)
+    "Springer-Verlag", # ID: 34 (Duplicate to merge)
+    "Springer Verlag", # ID: 35 (Duplicate to merge)
+    "O'Reilly Media" # ID: 36 (Control/Clean entry)
   )
 )
 
-use_data(zot_item_data_values_raw, overwrite = TRUE)
+usethis::use_data(zot_item_data_values_raw, overwrite = TRUE)
 
+
+# 6. Item Data (EAV linking table)
+# Linked items to their newly created publishers (fieldID = 4)
+# Item 102 (Book) -> Springer (valueID 33)
+# Item 111 (Book) -> Springer-Verlag (valueID 34)
+# Item 113 (Book) -> O'Reilly Media (valueID 36)
 zot_item_data_raw <- tibble::tibble(
   itemID = c(
+    # Titles (fieldID = 1)
     101:115,
+    # Journals (fieldID = 2)
     101,
     102,
     103,
@@ -171,33 +204,35 @@ zot_item_data_raw <- tibble::tibble(
     112,
     114,
     115,
+    # Dates (fieldID = 3)
     101,
     105,
     106,
     112,
-    114
+    114,
+    # Publishers (fieldID = 4) - NEW!
+    102,
+    111,
+    113
   ),
-  fieldID = c(rep(1, 15), rep(2, 12), rep(3, 5)),
+  fieldID = c(
+    rep(1, 15), # Titles
+    rep(2, 12), # Journals
+    rep(3, 5), # Dates
+    rep(4, 3) # Publishers
+  ),
   valueID = c(
+    # Title IDs
     1:15,
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22,
-    23,
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32
+    # Journal IDs
+    16:27,
+    # Date IDs
+    28:32,
+    # Publisher IDs - NEW!
+    33,
+    34,
+    36
   )
 )
 
-use_data(zot_item_data_raw, overwrite = TRUE)
+usethis::use_data(zot_item_data_raw, overwrite = TRUE)

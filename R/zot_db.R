@@ -1,8 +1,7 @@
 #' Create a Realistic In-Memory Zotero Test Database
 #'
-#' This function simulates Zotero's exact relational database schema in-memory.
-#' It utilizes pre-defined package datasets (e.g., zot_creators_raw) to populate
-#' the SQLite tables.
+#' This function simulates Zotero's exact relational database schema in-memory
+#' by directly loading the pre-defined package datasets (e.g., \code{zot_creators_raw}).
 #'
 #' @return A DBI connection to a temporary, populated SQLite database in RAM.
 #' @import dbplyr
@@ -10,6 +9,7 @@
 zot_mock_db <- function() {
   con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
 
+  # Copy package datasets dynamically into the SQLite tables
   dplyr::copy_to(
     con,
     zot_creators_raw,
@@ -55,86 +55,13 @@ zot_mock_db <- function() {
 
   cli::cli_alert_success("Zotero mock database successfully created in memory!")
 
-  return(con)
+  con
 }
 
-
-#' Backup the Zotero Database
+#' Get Flat view of literature
 #'
-#' Creates a timestamped backup copy of the Zotero SQLite database in the
-#' current working directory. Highly recommended before running any cleaning
-#' operations on a real database.
-#'
-#' @param path Character. Path to the original Zotero SQLite database file.
-#' @return Character. The path to the created backup file (invisibly).
-#' @export
-zot_backup_db <- function(path) {
-  if (!file.exists(path)) {
-    cli::cli_abort("The database file {.val {path}} does not exist.")
-  }
-
-  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-  backup_name <- paste0("zotero_backup_", timestamp, ".sqlite")
-  backup_path <- file.path(getwd(), backup_name)
-
-  success <- file.copy(from = path, to = backup_path, overwrite = FALSE)
-
-  if (success) {
-    cli::cli_alert_success(
-      "Database backup successfully created: {.val {backup_path}}"
-    )
-  } else {
-    cli::cli_abort("Failed to create database backup.")
-  }
-
-  return(invisible(backup_path))
-}
-
-#' Connect to a Real Zotero Database
-#'
-#' Establishes a DBI connection to a local Zotero SQLite database.
-#'
-#' @param path Character. Path to the Zotero SQLite database file (typically 'zotero.sqlite').
-#' @return A DBI connection object to the Zotero database.
-#' @export
-zot_connect_db <- function(path) {
-  if (!file.exists(path)) {
-    cli::cli_abort("The database file {.val {path}} does not exist.")
-  }
-
-  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = path)
-  cli::cli_alert_success(
-    "Successfully connected to Zotero database at {.val {path}}"
-  )
-
-  return(con)
-}
-
-#' Disconnect from the Zotero Database
-#'
-#' Safely closes the connection to the SQLite database (mock or real) and
-#' provides a status message.
-#'
-#' @param con An active DBI connection.
-#' @return Invisible TRUE if successful.
-#' @export
-zot_disconnect_db <- function(con) {
-  if (!is.null(con) && DBI::dbIsValid(con)) {
-    DBI::dbDisconnect(con)
-    cli::cli_alert_success("Database connection successfully closed.")
-  } else {
-    cli::cli_alert_info("Database connection was already closed or invalid.")
-  }
-  return(invisible(TRUE))
-}
-
-#' Retrieve a Flat View of All Items, Titles, and Authors
-#'
-#' Helper function to demonstrate the "before and after" effects of database cleaning.
-#'
-#' @param con An active DBI connection to a Zotero database.
-#' @return A data frame containing item IDs, clean titles, and concatenated author names.
-#' @export
+#' @param con Active DBI database connection.
+#' @noRd
 zot_get_flat_view <- function(con) {
   items_db <- dplyr::tbl(con, "items")
   creators_db <- dplyr::tbl(con, "creators")
@@ -171,5 +98,84 @@ zot_get_flat_view <- function(con) {
     dplyr::inner_join(titles, by = "itemID") |>
     dplyr::left_join(authors, by = "itemID")
 
-  return(flat_view)
+  flat_view
+}
+
+# ==============================================================================
+# zotcleaner: Database Connection and Backup Utilities
+# ==============================================================================
+
+#' Backup the Zotero Database
+#'
+#' Creates a timestamped backup copy of the Zotero SQLite database in the
+#' current working directory. Highly recommended before running any cleaning
+#' operations on a real database.
+#'
+#' @param path Character. Path to the original Zotero SQLite database file.
+#' @return Character. The path to the created backup file (invisibly).
+#' @importFrom cli cli_abort cli_alert_success
+#' @export
+zot_backup_db <- function(path) {
+  if (!file.exists(path)) {
+    cli::cli_abort("The database file {.val {path}} does not exist.")
+  }
+
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  backup_name <- paste0("zotero_backup_", timestamp, ".sqlite")
+  backup_path <- file.path(getwd(), backup_name)
+
+  success <- file.copy(from = path, to = backup_path, overwrite = FALSE)
+
+  if (success) {
+    cli::cli_alert_success(
+      "Database backup successfully created: {.val {backup_path}}"
+    )
+  } else {
+    cli::cli_abort("Failed to create database backup.")
+  }
+
+  return(invisible(backup_path))
+}
+
+#' Connect to a Real Zotero Database
+#'
+#' Establishes a DBI connection to a local Zotero SQLite database.
+#'
+#' @param path Character. Path to the Zotero SQLite database file (typically 'zotero.sqlite').
+#' @return A DBI connection object to the Zotero database.
+#' @importFrom DBI dbConnect
+#' @importFrom RSQLite SQLite
+#' @importFrom cli cli_abort cli_alert_success
+#' @export
+zot_connect_db <- function(path) {
+  if (!file.exists(path)) {
+    cli::cli_abort("The database file {.val {path}} does not exist.")
+  }
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = path)
+  cli::cli_alert_success(
+    "Successfully connected to Zotero database at {.val {path}}"
+  )
+
+  return(con)
+}
+
+#' Disconnect from the Zotero Database
+#'
+#' Safely closes the connection to the SQLite database (mock or real) and
+#' provides a status message.
+#'
+#' @param con An active DBI connection.
+#' @return Invisible TRUE if successful.
+#' @importFrom DBI dbDisconnect dbIsValid
+#' @importFrom cli cli_alert_success cli_alert_info
+#' @export
+zot_disconnect_db <- function(con) {
+  if (!is.null(con) && DBI::dbIsValid(con)) {
+    DBI::dbDisconnect(con)
+    cli::cli_alert_success("Database connection successfully closed.")
+  } else {
+    cli::cli_alert_info("Database connection was already closed or invalid.")
+  }
+  return(invisible(TRUE))
 }
