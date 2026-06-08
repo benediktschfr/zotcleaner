@@ -45,7 +45,7 @@ zot_apply_smart_casing <- function(text, method = c("sentence", "title")) {
     "<[^>]+>", # 1. HTML tags
     "[a-zA-Z0-9_.-]+://[^\\s]+", # 2. URLs
     "[a-zA-Z0-9.-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]+", # 3. Emails
-    "[[:alpha:]]+(?:['’][[:alpha:]]+)*", # 4. Words (including apostrophes)
+    "[[:alpha:]]+(?:['\u2019][[:alpha:]]+)*", # 4. Words (including apostrophes)
     "[^[:alpha:]<]+", # 5. Non-words (spaces, punctuation)
     "<", # 6. Literal '<' catch-all
     sep = "|"

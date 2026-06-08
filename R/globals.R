@@ -51,5 +51,12 @@ utils::globalVariables(unique(c(
   "fieldName",
   "valueID",
   # zot_swap_names:
-  "creatorID"
+  "creatorID",
+  # zot_mock_db:
+  "zot_creators_raw",
+  "zot_fields_raw",
+  "zot_item_creators_raw",
+  "zot_item_data_raw",
+  "zot_item_data_values_raw",
+  "zot_items_raw"
 )))
