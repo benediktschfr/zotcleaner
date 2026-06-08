@@ -1,14 +1,43 @@
-#' Find Potentially Swapped Names
+# ==============================================================================
+# zotcleaner: First/Last Name Swapping Operations
+# ==============================================================================
+
+#' Handle Swapped First and Last Names in Zotero
 #'
-#' Scans the 'creators' table for entries where the firstName field contains
-#' typical Asian family names (like Wang, Li, Zhang, Kim) which are frequently
-#' swapped during imports.
+#' These functions allow you to systematically identify and correct instances
+#' where an author's first and last names have been imported in reverse order
+#' (highly common with Asian names or imports that lacked proper comma delimiters).
 #'
 #' @param con An active DBI connection to a Zotero database.
 #' @param family_names Character vector of typical family names to look for
-#'   in the firstName field.
+#'   in the `firstName` field.
+#' @param creator_ids A numeric vector of creatorIDs whose first and last names
+#'   should be swapped.
 #'
-#' @return A tibble containing the suspicious creators.
+#' @return
+#'   * `zot_find_swapped_names`: A tibble containing the suspicious creators.
+#'   * `zot_swap_names`: Invisible TRUE if successful, FALSE if cancelled.
+#'
+#' @examples
+#' # 1. Create a clean in-memory test database
+#' mock_db <- zot_mock_db()
+#'
+#' # 2. Find authors where typical Asian last names are in the first name field
+#' swapped_authors <- zot_find_swapped_names(mock_db)
+#' print(swapped_authors)
+#'
+#' # 3. Swap the names back to correct order programmatically
+#' # (In an interactive session, leaving out target_id/prompting works automatically)
+#' zot_swap_names(
+#'   con = mock_db,
+#'   creator_ids = swapped_authors$creatorID
+#' )
+#'
+#' # 4. Disconnect safely
+#' zot_disconnect_db(mock_db)
+#'
+#' @rdname zot_swap_names
+#' @order 1
 #' @export
 zot_find_swapped_names <- function(
   con,
@@ -52,16 +81,8 @@ zot_find_swapped_names <- function(
   return(matches)
 }
 
-#' Swap First and Last Names
-#'
-#' Inverts the firstName and lastName fields for the given creator IDs.
-#' This is highly useful for correcting Asian names or fixing systematic
-#' import errors where the comma was missing.
-#'
-#' @param con An active DBI connection to a Zotero database.
-#' @param creator_ids A numeric vector of creatorIDs to swap.
-#'
-#' @return Invisible TRUE if successful, FALSE if cancelled.
+#' @rdname zot_swap_names
+#' @order 2
 #' @export
 zot_swap_names <- function(con, creator_ids) {
   if (length(creator_ids) == 0) {
