@@ -1,13 +1,40 @@
-#' Find Journals in the Zotero Database
+#' Handle Duplicate Journals in Zotero
 #'
-#' Searches the 'itemDataValues' table for specific journal names (publicationTitle).
-#' This is the first step before merging duplicate or inconsistently abbreviated journals.
+#' These functions allow you to systematically find and merge duplicate or
+#' inconsistently formatted journal titles (publicationTitle) in the Zotero database.
 #'
 #' @param con An active DBI connection to a Zotero database.
 #' @param pattern A character string containing a regular expression to search for.
 #' @param ignore_case Logical. Should the search be case-insensitive? Default is TRUE.
+#' @param merge_ids A numeric vector of valueIDs that should be merged.
+#' @param target_id (Optional) The specific valueID that should be kept. If NULL
+#'   and the session is interactive, an interactive selection menu is presented.
 #'
-#' @return A tibble containing the matching journal strings and their valueIDs.
+#' @return
+#'   * `zot_find_journals`: A tibble containing the matching journal strings and their valueIDs.
+#'   * `zot_merge_journals`: Invisible TRUE if successful, FALSE if cancelled or failed.
+#'
+#' @examples
+#' # 1. Create a clean in-memory test environment
+#' mock_db <- zot_mock_db()
+#'
+#' # 2. Find all variations of a specific journal (e.g., "Phys")
+#' phys_journals <- zot_find_journals(mock_db, "Phys")
+#' phys_journals
+#'
+#' # 3. Merge duplicates programmatically by specifying the target master ID
+#' # (In an interactive session, you can leave target_id = NULL for a menu)
+#' zot_merge_journals(
+#'   con = mock_db,
+#'   merge_ids = phys_journals$valueID,
+#'   target_id = 16
+#' )
+#'
+#' # 4. Disconnect safely
+#' zot_disconnect_db(mock_db)
+#'
+#' @rdname zot_journals
+#' @order 1
 #' @export
 zot_find_journals <- function(con, pattern, ignore_case = TRUE) {
   fields_db <- dplyr::tbl(con, "fields")
@@ -47,18 +74,8 @@ zot_find_journals <- function(con, pattern, ignore_case = TRUE) {
   return(matches)
 }
 
-#' Merge Duplicate Journals in Zotero
-#'
-#' Merges multiple journal string IDs into a single target ID. It updates all
-#' publication links in the 'itemData' table to point to the target ID
-#' and cleans up the orphaned string fragments.
-#'
-#' @param con An active DBI connection to a Zotero database.
-#' @param merge_ids A numeric vector of valueIDs that should be merged.
-#' @param target_id (Optional) The specific valueID that should be kept. If NULL
-#' and the session is interactive, a selection menu is presented.
-#'
-#' @return Invisible TRUE if successful, FALSE if cancelled or failed.
+#' @rdname zot_journals
+#' @order 2
 #' @export
 zot_merge_journals <- function(con, merge_ids, target_id = NULL) {
   fields_db <- dplyr::tbl(con, "fields")
