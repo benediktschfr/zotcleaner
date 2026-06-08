@@ -14,7 +14,7 @@ Modifying an active SQLite database can be risky. To protect your library, `zotc
 2. **In-Memory Testing**: Development, prototyping, and testing are done entirely on a realistic in-memory database mock.
 3. **Safe Disconnect**: Database connections are verified and safely terminated to prevent locking issues.
 
----
+
 
 ## Installation
 You can install the development version of `zotcleaner` directly from GitHub using the modern `pak` package manager:
@@ -27,7 +27,7 @@ You can install the development version of `zotcleaner` directly from GitHub usi
 pak::pak("benediktschfr/zotcleaner")
 ```
 
----
+
 
 ## Core Features and Workflow
 The core functionality of `zotcleaner` revolves around scanning the relational structure of Zotero (which utilizes an Entity-Attribute-Value model for metadata fields) and safely updating values in-place. 
@@ -109,7 +109,7 @@ zot_merge_publishers(
 zot_disconnect_db(con)
 ```
 
----
+
 
 ## Production Workflow
 Once you are confident with the programmatic steps using the mock environment, you can run the cleaning steps on your real Zotero SQLite file.
@@ -133,7 +133,7 @@ con <- zot_connect_db(db_path)
 zot_disconnect_db(con)
 ```
 
----
+
 
 ## Technical Details: The Zotero Relational Model
 Under the hood, `zotcleaner` is optimized for Zotero’s internal data structures:
@@ -141,7 +141,7 @@ Under the hood, `zotcleaner` is optimized for Zotero’s internal data structure
 * **Item Creators**: Author relationships and orders are defined in `itemCreators` which links back to the master `creators` table. Merging authors redirects these links and sweeps away orphan records.
 * **Fields and Values**: Text fields such as `title`, `publicationTitle` (journals), and `publisher` are saved as reusable strings inside `itemDataValues`. Changing or merging them rewires the links inside `itemData` and cleans up unused (orphaned) string rows to maintain a lightweight database file.
 
----
+
 
 ## Contributions
 Contributions, feedback, and issue reports are highly welcome. 
@@ -151,7 +151,7 @@ Contributions, feedback, and issue reports are highly welcome.
 
 Please ensure that you run `devtools::test()` and confirm that all unit tests pass before submitting your contributions.
 
----
+
 
 ## License
 This package is licensed under the MIT License. See the `LICENSE` file for details.
