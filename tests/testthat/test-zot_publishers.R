@@ -2,56 +2,20 @@ library(testthat)
 library(DBI)
 library(dplyr)
 
-# Helper function to inject dummy publisher data into the mock DB
-inject_mock_publishers <- function(con) {
-  # 1. Add 'publisher' to fields table (assume ID 4)
-  DBI::dbExecute(
-    con,
-    "INSERT INTO fields (fieldID, fieldName) VALUES (4, 'publisher')"
-  )
-
-  # 2. Add some messy publisher names to itemDataValues
-  DBI::dbExecute(
-    con,
-    "INSERT INTO itemDataValues (valueID, value) VALUES (101, 'Springer')"
-  )
-  DBI::dbExecute(
-    con,
-    "INSERT INTO itemDataValues (valueID, value) VALUES (102, 'Springer Verlag')"
-  )
-  DBI::dbExecute(
-    con,
-    "INSERT INTO itemDataValues (valueID, value) VALUES (103, 'Springer-Verlag')"
-  )
-
-  # 3. Link them to some items in itemData (Item IDs 102, 111, 105 from our mock)
-  DBI::dbExecute(
-    con,
-    "INSERT INTO itemData (itemID, fieldID, valueID) VALUES (102, 4, 101)"
-  )
-  DBI::dbExecute(
-    con,
-    "INSERT INTO itemData (itemID, fieldID, valueID) VALUES (111, 4, 102)"
-  )
-  DBI::dbExecute(
-    con,
-    "INSERT INTO itemData (itemID, fieldID, valueID) VALUES (105, 4, 103)"
-  )
-}
-
 # ------------------------------------------------------------------------------
-# Tests für die Suchfunktion (zot_find_publishers)
+# Tests for finding publishers (zot_find_publishers)
 # ------------------------------------------------------------------------------
 
-test_that("zot_find_publishers correctly finds publishers", {
+test_that("zot_find_publishers correctly finds active publishers", {
   con <- zot_mock_db()
-  inject_mock_publishers(con)
 
   # Search for "Springer"
+  # We expect "Springer" (33) and "Springer-Verlag" (34) since they are linked to items.
+  # Note: "Springer Verlag" (35) is in the database but unlinked, so it won't be found.
   matches <- zot_find_publishers(con, "Springer", ignore_case = TRUE)
 
-  expect_equal(nrow(matches), 3)
-  expect_true(all(matches$valueID %in% c(101, 102, 103)))
+  expect_equal(nrow(matches), 2)
+  expect_true(all(matches$valueID %in% c(33, 34)))
 
   # Search with no matches
   expect_message(
@@ -60,61 +24,68 @@ test_that("zot_find_publishers correctly finds publishers", {
   )
   expect_equal(nrow(matches_none), 0)
 
-  DBI::dbDisconnect(con)
+  zot_disconnect_db(con)
 })
 
 # ------------------------------------------------------------------------------
-# Tests für das Zusammenführen (zot_merge_publishers)
+# Tests for merging publishers (zot_merge_publishers)
 # ------------------------------------------------------------------------------
 
 test_that("zot_merge_publishers correctly updates references and deletes orphans", {
   con <- zot_mock_db()
-  inject_mock_publishers(con)
 
-  # Wir mergen alle Springer-Varianten auf "Springer" (ID 101)
-  merge_ids <- c(101, 102, 103)
-  target_id <- 101
+  # We merge the linked "Springer-Verlag" (34) and unlinked "Springer Verlag" (35)
+  # into the master "Springer" (33)
+  merge_ids <- c(33, 34, 35)
+  target_id <- 33
 
-  # Bevor wir mergen, schauen wir, wie oft die IDs in itemData verknüpft sind
+  # Before merging, check how many times the IDs are referenced in itemData
   item_data_before <- dplyr::tbl(con, "itemData") |> dplyr::collect()
-  count_before <- sum(item_data_before$valueID %in% merge_ids)
+  count_before <- sum(item_data_before$valueID %in% merge_ids) # Should be 2 (ID 33 and 34)
 
-  # Funktion ausführen
+  # Perform merge
   expect_invisible(zot_merge_publishers(
     con,
     merge_ids = merge_ids,
     target_id = target_id
   ))
 
-  # 1. Überprüfung der itemData Tabelle
+  # 1. Verify itemData table link updates
   item_data_after <- dplyr::tbl(con, "itemData") |> dplyr::collect()
 
-  # Keine Verknüpfung mehr zu den alten IDs 102 oder 103
-  expect_false(any(item_data_after$valueID %in% c(102, 103)))
+  # No references to old duplicate IDs should remain
+  expect_false(any(item_data_after$valueID %in% c(34, 35)))
 
-  # ID 101 sollte jetzt alle Verknüpfungen haben
-  expect_equal(sum(item_data_after$valueID == 101), count_before)
+  # The master ID 33 should now hold all references
+  expect_equal(sum(item_data_after$valueID == 33), count_before)
 
-  # 2. Überprüfung der itemDataValues Tabelle
-  item_data_values_db <- dplyr::tbl(con, "itemDataValues") |> dplyr::collect()
+  # 2. Verify itemDataValues cleanup
+  item_data_values_after <- dplyr::tbl(con, "itemDataValues") |>
+    dplyr::collect()
 
-  # Die verwaisten Duplikate (102, 103) müssen gelöscht sein
-  expect_false(any(item_data_values_db$valueID %in% c(102, 103)))
+  # Orphaned duplicate string entries should be deleted entirely
+  expect_false(any(item_data_values_after$valueID %in% c(34, 35)))
 
-  # Der Master-Eintrag (ID 101) muss existieren
-  expect_true(any(item_data_values_db$valueID == 101))
+  # Master publisher string entry must still exist
+  expect_true(any(item_data_values_after$valueID == 33))
 
-  DBI::dbDisconnect(con)
+  zot_disconnect_db(con)
 })
 
 test_that("zot_merge_publishers fails gracefully on invalid inputs", {
   con <- zot_mock_db()
-  inject_mock_publishers(con)
 
+  # Too few IDs provided (< 2)
   expect_error(
-    zot_merge_publishers(con, merge_ids = c(101), target_id = 101),
+    zot_merge_publishers(con, merge_ids = c(33), target_id = 33),
     "You must provide at least two valid"
   )
 
-  DBI::dbDisconnect(con)
+  # target_id is not in the merge_ids list
+  expect_error(
+    zot_merge_publishers(con, merge_ids = c(33, 34), target_id = 99),
+    "must be one of the IDs provided"
+  )
+
+  zot_disconnect_db(con)
 })
